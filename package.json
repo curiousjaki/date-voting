@@ -4,6 +4,7 @@
   "type": "module",
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.1.5",
+    "@nomicfoundation/hardhat-keystore": "^3.0.9",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.5",
     "@types/node": "^22.19.18",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
