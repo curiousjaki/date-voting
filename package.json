@@ -9,6 +9,7 @@
     "@types/node": "^22.19.18",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.4.5",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.3",
     "viem": "^2.48.11"
   }
