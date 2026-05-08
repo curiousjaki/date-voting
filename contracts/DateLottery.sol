@@ -272,8 +272,8 @@ contract DateLottery {
             require(!seen[di], "DateLottery: duplicate date in ballot");
             seen[di] = true;
 
-            // Borda points: rank i (0-based) → N - i points
-            uint256 points = N - i;
+            // Borda points: rank i (0-based) → (N - i) * 3 points
+            uint256 points = (N - i) * 3;
             bordaScore[gid][di] += points;
         }
 

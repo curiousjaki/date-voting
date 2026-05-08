@@ -30,6 +30,7 @@ const MEMBERS: { address: `0x${string}`; group: string }[] = [
   { address: "0xCbcEe0123bDDAfB5Ca93De5FF27FCB4a2B938630", group: "E" },
   { address: "0x5836802C2662c547e431d1a1D9EE99447C22f149", group: "E" },
   { address: "0x83e7e18d412C400726B35360beC0570e488eAFdB", group: "E" },
+  { address: "0xf3d3D9e9927Fc05C74F8742DE876280046fd4baf", group: "B" }
 ];
 
 const { viem } = await network.create();

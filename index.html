@@ -218,6 +218,16 @@
     #toast.error { border-color: #be123c; color: #fca5a5; }
     #toast.success { border-color: #15803d; color: #86efac; }
 
+    /* Votes breakdown table */
+    .votes-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .5rem; }
+    .votes-table th { text-align: left; padding: .4rem .6rem; color: #64748b; font-weight: 600; border-bottom: 1px solid #334155; }
+    .votes-table td { padding: .4rem .6rem; border-bottom: 1px solid #1e293b; }
+    .votes-table tr:last-child td { border-bottom: none; }
+    .votes-table td.score-cell { text-align: right; color: #a5f3fc; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .votes-table td.score-cell.top { color: #86efac; }
+    .votes-group-header { font-size: .82rem; font-weight: 700; color: #94a3b8; margin: 1rem 0 .35rem; text-transform: uppercase; letter-spacing: .05em; }
+    .votes-group-header span { color: #6366f1; }
+
     .hidden { display: none !important; }
     .section-note { font-size: .8rem; color: #64748b; margin-top: .4rem; }
 
@@ -317,6 +327,10 @@
 <div id="panel-results" class="panel hidden">
   <h2>Results — Date Assignments</h2>
   <div id="results-list"></div>
+
+  <h2 style="margin-top:1.5rem">Voting Breakdown</h2>
+  <p class="section-note" style="margin-bottom:.75rem">Borda points accumulated by each group per date (higher = more preferred by the group).</p>
+  <div id="results-votes"></div>
 </div>
 
 <div id="toast"></div>
@@ -474,7 +488,7 @@
 
     if (currentPhase === 3) {
       show("panel-results");
-      renderResults(groups);
+      renderResults(groups, dates);
     }
   }
 
@@ -535,16 +549,61 @@
     `).join("") || "<p style='color:#64748b;font-size:.88rem;margin:.5rem 0'>No groups yet.</p>";
   }
 
-  async function renderResults(groups) {
-    const el = document.getElementById("results-list");
-    const rows = await Promise.all(groups.map(async g => {
+  async function renderResults(groups, dates) {
+    // ── Assignments ──────────────────────────────────────────────────────────
+    const assignmentRows = await Promise.all(groups.map(async g => {
       const d = await contract.getAssignment(g.id);
       return `<div class="assignment-row">
         <span class="group-name">${g.name} <span style="color:#475569">#${g.id}</span></span>
         <span class="date-val">${ts(d)}</span>
       </div>`;
     }));
-    el.innerHTML = rows.join("");
+    document.getElementById("results-list").innerHTML = assignmentRows.join("");
+
+    // ── Votes breakdown ──────────────────────────────────────────────────────
+    // Fetch all borda scores: scores[groupIdx][dateIdx] = bigint points
+    const scores = await Promise.all(groups.map(g =>
+      Promise.all(dates.map((_, di) => contract.getBordaScore(g.id, di)))
+    ));
+
+    // Determine which groups to show:
+    // owner sees all; members see only their own group
+    const visibleGroups = isOwner
+      ? groups
+      : groups.filter(g => g.id === myGroupId);
+
+    if (visibleGroups.length === 0) {
+      document.getElementById("results-votes").innerHTML =
+        "<p class='section-note'>No voting data to display.</p>";
+      return;
+    }
+
+    const votesHtml = visibleGroups.map(g => {
+      const gi = groups.indexOf(g);
+      const groupScores = scores[gi]; // array of bigints, one per date
+      const maxScore = groupScores.reduce((a, b) => (b > a ? b : a), 0n);
+
+      const dateRows = dates.map((d, di) => {
+        const pts = groupScores[di];
+        const isTop = pts === maxScore && maxScore > 0n;
+        return `<tr>
+          <td>${ts(d)}</td>
+          <td class="score-cell${isTop ? " top" : ""}">${pts.toString()}</td>
+        </tr>`;
+      }).join("");
+
+      const label = isOwner
+        ? `Group <span>${g.name}</span> <span style="color:#475569;font-weight:400">#${g.id}</span>`
+        : `Your group: <span>${g.name}</span>`;
+
+      return `<div class="votes-group-header">${label}</div>
+        <table class="votes-table">
+          <thead><tr><th>Date</th><th style="text-align:right">Borda points</th></tr></thead>
+          <tbody>${dateRows}</tbody>
+        </table>`;
+    }).join("");
+
+    document.getElementById("results-votes").innerHTML = votesHtml;
   }
 
   // ── Ballot drag-and-drop ───────────────────────────────────────────────────
@@ -635,9 +694,21 @@
     await send(() => contract.submitBallot(ballotDates));
   });
 
-  // ── Auto-load if address is in URL hash ───────────────────────────────────
-  if (location.hash.startsWith("#0x")) {
-    document.getElementById("contract-address").value = location.hash.slice(1);
+  // ── Auto-load if address is in URL hash or ?contract= query param ────────
+  const hashAddr = location.hash.startsWith("#0x") ? location.hash.slice(1) : null;
+  const queryAddr = new URLSearchParams(location.search).get("contract");
+  const autoAddr = hashAddr || queryAddr;
+
+  if (autoAddr && ethers.isAddress(autoAddr)) {
+    document.getElementById("contract-address").value = autoAddr;
+
+    // As soon as MetaMask connects, immediately load the contract
+    const origLoad = document.getElementById("load-btn");
+    document.getElementById("connect-btn").addEventListener("click", async () => {
+      // Wait one tick for the connect handler above to finish setting `signer`
+      await new Promise(r => setTimeout(r, 100));
+      await loadContract();
+    }, { once: true });
   }
 </script>
 </body>
