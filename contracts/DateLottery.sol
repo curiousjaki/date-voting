@@ -94,6 +94,17 @@ contract DateLottery {
         emit DateAdded(date);
     }
 
+    function addDates(uint256[] calldata _dates) external onlyOwner inPhase(Phase.SETUP) {
+        for (uint256 i = 0; i < _dates.length; i++) {
+            uint256 date = _dates[i];
+            require(date > 0,          "DateLottery: date must be non-zero");
+            require(!dateExists[date], "DateLottery: date already added");
+            dateExists[date] = true;
+            dates.push(date);
+            emit DateAdded(date);
+        }
+    }
+
     function removeDate(uint256 date) external onlyOwner inPhase(Phase.SETUP) {
         require(dateExists[date], "DateLottery: date not found");
         dateExists[date] = false;
@@ -121,6 +132,20 @@ contract DateLottery {
         groups[groupId].exists = true;
         groupIds.push(groupId);
         emit GroupAdded(groupId);
+    }
+
+    function addGroups(uint256[] calldata _groupIds, string[] calldata _names) external onlyOwner inPhase(Phase.SETUP) {
+        require(_groupIds.length == _names.length, "DateLottery: array length mismatch");
+        for (uint256 i = 0; i < _groupIds.length; i++) {
+            uint256 groupId = _groupIds[i];
+            require(!groups[groupId].exists, "DateLottery: group ID already exists");
+            require(groupId != 0,            "DateLottery: group ID 0 is reserved");
+            groups[groupId].id     = groupId;
+            groups[groupId].name   = _names[i];
+            groups[groupId].exists = true;
+            groupIds.push(groupId);
+            emit GroupAdded(groupId);
+        }
     }
 
     function removeGroup(uint256 groupId) external onlyOwner inPhase(Phase.SETUP) {
@@ -158,6 +183,22 @@ contract DateLottery {
         groups[groupId].memberIndex[member] = groups[groupId].members.length; // 1-based
         memberGroup[member] = groupId;
         emit MemberAdded(groupId, member);
+    }
+
+    function addMembers(uint256[] calldata _groupIds, address[] calldata _members) external onlyOwner inPhase(Phase.SETUP) {
+        require(_groupIds.length == _members.length, "DateLottery: array length mismatch");
+        for (uint256 i = 0; i < _groupIds.length; i++) {
+            uint256 groupId = _groupIds[i];
+            address member  = _members[i];
+            require(groups[groupId].exists,   "DateLottery: group not found");
+            require(member != owner,          "DateLottery: owner cannot be a member");
+            require(member != address(0),     "DateLottery: zero address not allowed");
+            require(memberGroup[member] == 0, "DateLottery: address already in a group");
+            groups[groupId].members.push(member);
+            groups[groupId].memberIndex[member] = groups[groupId].members.length;
+            memberGroup[member] = groupId;
+            emit MemberAdded(groupId, member);
+        }
     }
 
     function removeMember(uint256 groupId, address member) external onlyOwner inPhase(Phase.SETUP) {

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Date Lottery</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+    h2 { font-size: 1.1rem; font-weight: 600; color: #94a3b8; margin-bottom: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    #connect-btn {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: .6rem 1.2rem;
+      font-size: .9rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #connect-btn:hover { background: #4f46e5; }
+
+    #wallet-info {
+      font-size: .85rem;
+      color: #94a3b8;
+      display: none;
+    }
+
+    #contract-row {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 2rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    #contract-row input {
+      flex: 1;
+      min-width: 260px;
+      padding: .55rem .75rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: .9rem;
+    }
+    #contract-row button {
+      padding: .55rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background: #334155;
+      color: #e2e8f0;
+      cursor: pointer;
+      font-size: .9rem;
+    }
+    #contract-row button:hover { background: #475569; }
+
+    #status-bar {
+      background: #1e293b;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      font-size: .9rem;
+    }
+    #status-bar span { color: #94a3b8; }
+    #status-bar strong { color: #e2e8f0; }
+
+    .phase-badge {
+      display: inline-block;
+      padding: .2rem .7rem;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .phase-0 { background: #1d4ed8; color: #bfdbfe; }
+    .phase-1 { background: #15803d; color: #bbf7d0; }
+    .phase-2 { background: #92400e; color: #fde68a; }
+    .phase-3 { background: #6b21a8; color: #e9d5ff; }
+
+    .panel {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .6rem; align-items: center; }
+
+    input[type="text"], input[type="number"], input[type="date"] {
+      padding: .5rem .75rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f1117;
+      color: #e2e8f0;
+      font-size: .9rem;
+    }
+    input[type="text"] { min-width: 180px; }
+    input[type="number"] { width: 110px; }
+    input[type="date"] { width: 160px; }
+
+    button.action {
+      padding: .5rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background: #6366f1;
+      color: #fff;
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    button.action:hover { background: #4f46e5; }
+    button.action:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    button.danger { background: #be123c; }
+    button.danger:hover { background: #9f1239; }
+    button.success { background: #15803d; }
+    button.success:hover { background: #166534; }
+
+    ul.item-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      margin-top: .5rem;
+    }
+    ul.item-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f1117;
+      border-radius: 8px;
+      padding: .5rem .75rem;
+      font-size: .88rem;
+      gap: .5rem;
+    }
+    ul.item-list li span { flex: 1; word-break: break-all; }
+    ul.item-list li button { padding: .3rem .7rem; font-size: .8rem; }
+
+    /* Ballot drag-and-drop */
+    #ballot-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      margin: .75rem 0;
+    }
+    #ballot-list li {
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: .6rem .9rem;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      font-size: .9rem;
+      user-select: none;
+    }
+    #ballot-list li.dragging { opacity: .4; }
+    #ballot-list li.drag-over { border-color: #6366f1; }
+    .rank-num {
+      font-size: .75rem;
+      font-weight: 700;
+      color: #6366f1;
+      min-width: 1.5rem;
+      text-align: center;
+    }
+
+    /* Assignments */
+    .assignment-row {
+      display: flex;
+      justify-content: space-between;
+      padding: .5rem .75rem;
+      background: #0f1117;
+      border-radius: 8px;
+      margin-bottom: .4rem;
+      font-size: .9rem;
+    }
+    .assignment-row .group-name { color: #94a3b8; }
+    .assignment-row .date-val { color: #a5f3fc; font-weight: 600; }
+
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: .75rem 1.1rem;
+      font-size: .88rem;
+      max-width: 340px;
+      display: none;
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    }
+    #toast.error { border-color: #be123c; color: #fca5a5; }
+    #toast.success { border-color: #15803d; color: #86efac; }
+
+    .hidden { display: none !important; }
+    .section-note { font-size: .8rem; color: #64748b; margin-top: .4rem; }
+
+    #refresh-btn {
+      background: none;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: .4rem .8rem;
+      cursor: pointer;
+      font-size: .82rem;
+    }
+    #refresh-btn:hover { border-color: #6366f1; color: #6366f1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Date Lottery</h1>
+  <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+    <span id="wallet-info"></span>
+    <button id="connect-btn">Connect MetaMask</button>
+  </div>
+</header>
+
+<!-- Contract address input -->
+<div id="contract-row">
+  <input id="contract-address" type="text" placeholder="Contract address (0x…)" />
+  <button id="load-btn">Load Contract</button>
+  <button id="refresh-btn">↻ Refresh</button>
+</div>
+
+<!-- Status bar -->
+<div id="status-bar" class="hidden">
+  <div><span>Phase: </span><strong id="sb-phase">—</strong></div>
+  <div><span>Owner: </span><strong id="sb-owner">—</strong></div>
+  <div><span>Your role: </span><strong id="sb-role">—</strong></div>
+  <div><span>Your group: </span><strong id="sb-group">—</strong></div>
+</div>
+
+<!-- ── OWNER SETUP PANEL ── -->
+<div id="panel-setup-owner" class="panel hidden">
+  <h2>Setup — Dates</h2>
+  <div class="row">
+    <input id="add-date-input" type="date" />
+    <button class="action" id="add-date-btn">Add Date</button>
+  </div>
+  <ul id="dates-list" class="item-list"></ul>
+
+  <h2 style="margin-top:1.25rem">Setup — Groups</h2>
+  <div class="row">
+    <input id="group-id-input" type="number" placeholder="Group ID" min="1" />
+    <input id="group-name-input" type="text" placeholder="Group name" />
+    <button class="action" id="add-group-btn">Add Group</button>
+  </div>
+  <div id="groups-admin-list"></div>
+
+  <div style="margin-top:1.25rem">
+    <button class="action success" id="open-voting-btn">Open Voting</button>
+    <p class="section-note">Requires ≥ 2 groups, each with ≥ 1 member, and dates = groups.</p>
+  </div>
+</div>
+
+<!-- ── OWNER VOTING PANEL ── -->
+<div id="panel-voting-owner" class="panel hidden">
+  <h2>Voting is open</h2>
+  <p class="section-note" style="margin-bottom:.75rem">Members are voting. Close when ready.</p>
+  <button class="action danger" id="close-voting-btn">Close Voting</button>
+</div>
+
+<!-- ── OWNER CLOSED PANEL ── -->
+<div id="panel-closed-owner" class="panel hidden">
+  <h2>Voting Closed</h2>
+  <p class="section-note" style="margin-bottom:.75rem">All ballots are in. Trigger the lottery draw.</p>
+  <button class="action success" id="resolve-btn">Resolve (Run Lottery)</button>
+</div>
+
+<!-- ── MEMBER VOTING PANEL ── -->
+<div id="panel-member-vote" class="panel hidden">
+  <h2>Cast Your Ballot</h2>
+  <p class="section-note" style="margin-bottom:.75rem">Drag to rank dates from most preferred (top) to least preferred (bottom).</p>
+  <ul id="ballot-list"></ul>
+  <button class="action" id="submit-ballot-btn">Submit Ballot</button>
+  <p id="already-voted-msg" class="section-note hidden" style="color:#86efac;margin-top:.5rem">✓ You have already submitted your ballot.</p>
+</div>
+
+<!-- ── STATE VIEWER (always visible when contract loaded) ── -->
+<div id="panel-state" class="panel hidden">
+  <h2>Candidate Dates</h2>
+  <ul id="state-dates-list" class="item-list"></ul>
+
+  <h2 style="margin-top:1.25rem">Groups &amp; Members</h2>
+  <div id="state-groups-list"></div>
+</div>
+
+<!-- ── RESULTS PANEL ── -->
+<div id="panel-results" class="panel hidden">
+  <h2>Results — Date Assignments</h2>
+  <div id="results-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+  import { ethers } from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.min.js";
+
+  const ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"member","type":"address"},{"indexed":false,"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"BallotSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"date","type":"uint256"}],"name":"DateAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"date","type":"uint256"}],"name":"DateAssigned","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"date","type":"uint256"}],"name":"DateRemoved","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"GroupAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"GroupRemoved","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":false,"internalType":"address","name":"member","type":"address"}],"name":"MemberAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"groupId","type":"uint256"},{"indexed":false,"internalType":"address","name":"member","type":"address"}],"name":"MemberRemoved","type":"event"},{"anonymous":false,"inputs":[],"name":"VotingClosed","type":"event"},{"anonymous":false,"inputs":[],"name":"VotingOpened","type":"event"},{"stateMutability":"payable","type":"fallback"},{"inputs":[{"internalType":"uint256","name":"date","type":"uint256"}],"name":"addDate","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"},{"internalType":"string","name":"name","type":"string"}],"name":"addGroup","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"},{"internalType":"address","name":"member","type":"address"}],"name":"addMember","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"assignedDate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"closeVoting","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"dateExists","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"dates","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"getAssignment","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"},{"internalType":"uint256","name":"dateIndex","type":"uint256"}],"name":"getBordaScore","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getDates","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getGroupIds","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"getGroupMembers","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"getGroupName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"groupIds","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasVoted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"memberGroup","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"openVoting","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"phase","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"date","type":"uint256"}],"name":"removeDate","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"}],"name":"removeGroup","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"groupId","type":"uint256"},{"internalType":"address","name":"member","type":"address"}],"name":"removeMember","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"resolve","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"rankedDates","type":"uint256[]"}],"name":"submitBallot","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}];
+
+  const PHASE_LABELS = ["SETUP", "VOTING", "CLOSED", "RESOLVED"];
+  const PHASE_CLASSES = ["phase-0", "phase-1", "phase-2", "phase-3"];
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let provider, signer, account, contract;
+  let currentPhase = 0;
+  let isOwner = false;
+  let myGroupId = 0n;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function ts(unix) {
+    if (!unix) return "—";
+    return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
+      year: "numeric", month: "long", day: "numeric"
+    });
+  }
+
+  function shortAddr(addr) {
+    return addr.slice(0, 6) + "…" + addr.slice(-4);
+  }
+
+  let toastTimer;
+  function toast(msg, type = "success") {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = type;
+    el.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.style.display = "none"; }, 4000);
+  }
+
+  async function send(fn) {
+    try {
+      const tx = await fn();
+      toast("Transaction sent, waiting…", "success");
+      await tx.wait();
+      toast("Transaction confirmed ✓", "success");
+      await refresh();
+    } catch (e) {
+      const msg = e?.reason || e?.shortMessage || e?.message || "Unknown error";
+      toast(msg, "error");
+    }
+  }
+
+  function show(...ids) { ids.forEach(id => document.getElementById(id)?.classList.remove("hidden")); }
+  function hide(...ids) { ids.forEach(id => document.getElementById(id)?.classList.add("hidden")); }
+
+  // ── Connect MetaMask ───────────────────────────────────────────────────────
+  document.getElementById("connect-btn").addEventListener("click", async () => {
+    if (!window.ethereum) { toast("MetaMask not found", "error"); return; }
+    provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await provider.send("eth_requestAccounts", []);
+    account = accounts[0];
+    signer = await provider.getSigner();
+    document.getElementById("wallet-info").textContent = shortAddr(account);
+    document.getElementById("wallet-info").style.display = "inline";
+    document.getElementById("connect-btn").textContent = "Connected";
+    document.getElementById("connect-btn").disabled = true;
+
+    window.ethereum.on("accountsChanged", () => location.reload());
+    window.ethereum.on("chainChanged", () => location.reload());
+  });
+
+  // ── Load Contract ──────────────────────────────────────────────────────────
+  document.getElementById("load-btn").addEventListener("click", loadContract);
+  document.getElementById("refresh-btn").addEventListener("click", refresh);
+
+  async function loadContract() {
+    const addr = document.getElementById("contract-address").value.trim();
+    if (!provider) { toast("Connect MetaMask first", "error"); return; }
+    if (!ethers.isAddress(addr)) { toast("Invalid address", "error"); return; }
+    try {
+      contract = new ethers.Contract(addr, ABI, signer);
+      await refresh();
+    } catch (e) {
+      toast("Failed to load contract: " + e.message, "error");
+    }
+  }
+
+  async function refresh() {
+    if (!contract) return;
+
+    // Read chain state
+    currentPhase = Number(await contract.phase());
+    const ownerAddr = await contract.owner();
+    isOwner = account?.toLowerCase() === ownerAddr.toLowerCase();
+    const myGroupIdRaw = account ? await contract.memberGroup(account) : 0n;
+    myGroupId = myGroupIdRaw;
+    const isMember = myGroupId > 0n;
+
+    const groupIds = await contract.getGroupIds();
+    const dates = await contract.getDates();
+
+    // Fetch group details
+    const groups = await Promise.all(groupIds.map(async gid => ({
+      id: gid,
+      name: await contract.getGroupName(gid),
+      members: await contract.getGroupMembers(gid),
+    })));
+
+    // ── Status bar ────────────────────────────────────────────────────────
+    show("status-bar");
+    const phaseBadge = `<span class="phase-badge ${PHASE_CLASSES[currentPhase]}">${PHASE_LABELS[currentPhase]}</span>`;
+    document.getElementById("sb-phase").innerHTML = phaseBadge;
+    document.getElementById("sb-owner").textContent = shortAddr(ownerAddr);
+
+    let role = "Spectator";
+    if (isOwner) role = "Owner";
+    else if (isMember) role = "Member";
+    document.getElementById("sb-role").textContent = role;
+
+    if (isMember) {
+      const grp = groups.find(g => g.id === myGroupId);
+      document.getElementById("sb-group").textContent = grp ? `${grp.name} (#${myGroupId})` : `#${myGroupId}`;
+    } else {
+      document.getElementById("sb-group").textContent = "—";
+    }
+
+    // ── Hide all panels, then show what's relevant ────────────────────────
+    hide("panel-setup-owner","panel-voting-owner","panel-closed-owner",
+         "panel-member-vote","panel-state","panel-results");
+
+    // Always show state viewer when contract is loaded
+    show("panel-state");
+    renderStateDates(dates);
+    renderStateGroups(groups, currentPhase);
+
+    if (isOwner) {
+      if (currentPhase === 0) { show("panel-setup-owner"); renderSetupDates(dates); renderAdminGroups(groups); }
+      if (currentPhase === 1) show("panel-voting-owner");
+      if (currentPhase === 2) show("panel-closed-owner");
+    }
+
+    if (isMember && currentPhase === 1) {
+      show("panel-member-vote");
+      const voted = await contract.hasVoted(account);
+      if (voted) {
+        hide("ballot-list","submit-ballot-btn");
+        show("already-voted-msg");
+      } else {
+        show("ballot-list","submit-ballot-btn");
+        hide("already-voted-msg");
+        renderBallot(dates);
+      }
+    }
+
+    if (currentPhase === 3) {
+      show("panel-results");
+      renderResults(groups);
+    }
+  }
+
+  // ── Render helpers ─────────────────────────────────────────────────────────
+
+  function renderStateDates(dates) {
+    const ul = document.getElementById("state-dates-list");
+    ul.innerHTML = dates.length
+      ? dates.map(d => `<li><span>${ts(d)}</span></li>`).join("")
+      : "<li><span style='color:#64748b'>No dates added yet.</span></li>";
+  }
+
+  function renderStateGroups(groups, phase) {
+    const el = document.getElementById("state-groups-list");
+    if (!groups.length) { el.innerHTML = "<p style='color:#64748b;font-size:.88rem'>No groups yet.</p>"; return; }
+    el.innerHTML = groups.map(g => `
+      <div style="margin-bottom:.75rem">
+        <div style="font-weight:600;margin-bottom:.3rem;color:#e2e8f0">${g.name} <span style="color:#64748b;font-size:.8rem">#${g.id}</span></div>
+        <ul class="item-list">
+          ${g.members.length
+            ? g.members.map(m => `<li><span>${m}</span></li>`).join("")
+            : "<li><span style='color:#64748b'>No members.</span></li>"}
+        </ul>
+      </div>
+    `).join("");
+  }
+
+  function renderSetupDates(dates) {
+    const ul = document.getElementById("dates-list");
+    ul.innerHTML = dates.map(d => `
+      <li>
+        <span>${ts(d)}</span>
+        <button class="action danger" onclick="removeDate(${d})">Remove</button>
+      </li>`).join("") || "<li><span style='color:#64748b'>None yet.</span></li>";
+  }
+
+  function renderAdminGroups(groups) {
+    const el = document.getElementById("groups-admin-list");
+    el.innerHTML = groups.map(g => `
+      <div style="margin-bottom:.75rem">
+        <div class="row" style="margin-bottom:.3rem">
+          <strong>${g.name}</strong>
+          <span style="color:#64748b;font-size:.82rem">#${g.id}</span>
+          <button class="action danger" style="margin-left:auto" onclick="removeGroup(${g.id})">Remove Group</button>
+        </div>
+        <ul class="item-list">
+          ${g.members.map(m => `
+            <li>
+              <span>${m}</span>
+              <button class="action danger" onclick="removeMember(${g.id},'${m}')">Remove</button>
+            </li>`).join("")}
+          <li style="background:none;padding:.2rem 0">
+            <input type="text" id="member-input-${g.id}" placeholder="0x… address" style="flex:1" />
+            <button class="action" onclick="addMember(${g.id})">Add Member</button>
+          </li>
+        </ul>
+      </div>
+    `).join("") || "<p style='color:#64748b;font-size:.88rem;margin:.5rem 0'>No groups yet.</p>";
+  }
+
+  async function renderResults(groups) {
+    const el = document.getElementById("results-list");
+    const rows = await Promise.all(groups.map(async g => {
+      const d = await contract.getAssignment(g.id);
+      return `<div class="assignment-row">
+        <span class="group-name">${g.name} <span style="color:#475569">#${g.id}</span></span>
+        <span class="date-val">${ts(d)}</span>
+      </div>`;
+    }));
+    el.innerHTML = rows.join("");
+  }
+
+  // ── Ballot drag-and-drop ───────────────────────────────────────────────────
+  let ballotDates = []; // array of bigint unix timestamps in current order
+
+  function renderBallot(dates) {
+    ballotDates = [...dates];
+    rebuildBallotDOM();
+  }
+
+  function rebuildBallotDOM() {
+    const ul = document.getElementById("ballot-list");
+    ul.innerHTML = "";
+    ballotDates.forEach((d, i) => {
+      const li = document.createElement("li");
+      li.dataset.idx = i;
+      li.draggable = true;
+      li.innerHTML = `<span class="rank-num">${i + 1}</span><span>${ts(d)}</span>`;
+      li.addEventListener("dragstart", onDragStart);
+      li.addEventListener("dragover",  onDragOver);
+      li.addEventListener("drop",      onDrop);
+      li.addEventListener("dragend",   onDragEnd);
+      ul.appendChild(li);
+    });
+  }
+
+  let dragSrcIdx = null;
+  function onDragStart(e) { dragSrcIdx = Number(e.currentTarget.dataset.idx); e.currentTarget.classList.add("dragging"); }
+  function onDragOver(e) { e.preventDefault(); document.querySelectorAll("#ballot-list li").forEach(l => l.classList.remove("drag-over")); e.currentTarget.classList.add("drag-over"); }
+  function onDrop(e) {
+    e.preventDefault();
+    const targetIdx = Number(e.currentTarget.dataset.idx);
+    if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+    const moved = ballotDates.splice(dragSrcIdx, 1)[0];
+    ballotDates.splice(targetIdx, 0, moved);
+    rebuildBallotDOM();
+  }
+  function onDragEnd(e) { e.currentTarget.classList.remove("dragging"); document.querySelectorAll("#ballot-list li").forEach(l => l.classList.remove("drag-over")); dragSrcIdx = null; }
+
+  // ── Owner action wires ─────────────────────────────────────────────────────
+  document.getElementById("add-date-btn").addEventListener("click", async () => {
+    const val = document.getElementById("add-date-input").value;
+    if (!val) { toast("Pick a date first", "error"); return; }
+    const unix = BigInt(Math.floor(new Date(val).getTime() / 1000));
+    await send(() => contract.addDate(unix));
+  });
+
+  window.removeDate = async (unix) => {
+    await send(() => contract.removeDate(BigInt(unix)));
+  };
+
+  document.getElementById("add-group-btn").addEventListener("click", async () => {
+    const id = document.getElementById("group-id-input").value;
+    const name = document.getElementById("group-name-input").value.trim();
+    if (!id || !name) { toast("Enter group ID and name", "error"); return; }
+    await send(() => contract.addGroup(BigInt(id), name));
+  });
+
+  window.removeGroup = async (id) => {
+    await send(() => contract.removeGroup(BigInt(id)));
+  };
+
+  window.addMember = async (groupId) => {
+    const addr = document.getElementById(`member-input-${groupId}`)?.value.trim();
+    if (!ethers.isAddress(addr)) { toast("Invalid address", "error"); return; }
+    await send(() => contract.addMember(BigInt(groupId), addr));
+  };
+
+  window.removeMember = async (groupId, addr) => {
+    await send(() => contract.removeMember(BigInt(groupId), addr));
+  };
+
+  document.getElementById("open-voting-btn").addEventListener("click", async () => {
+    await send(() => contract.openVoting());
+  });
+
+  document.getElementById("close-voting-btn").addEventListener("click", async () => {
+    await send(() => contract.closeVoting());
+  });
+
+  document.getElementById("resolve-btn").addEventListener("click", async () => {
+    await send(() => contract.resolve());
+  });
+
+  // ── Member ballot submit ───────────────────────────────────────────────────
+  document.getElementById("submit-ballot-btn").addEventListener("click", async () => {
+    if (!ballotDates.length) { toast("No dates to rank", "error"); return; }
+    await send(() => contract.submitBallot(ballotDates));
+  });
+
+  // ── Auto-load if address is in URL hash ───────────────────────────────────
+  if (location.hash.startsWith("#0x")) {
+    document.getElementById("contract-address").value = location.hash.slice(1);
+  }
+</script>
+</body>
+</html>

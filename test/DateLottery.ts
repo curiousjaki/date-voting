@@ -296,6 +296,108 @@ describe("DateLottery", async function () {
   });
 
   // ---------------------------------------------------------------------------
+  // Bulk add functions
+  // ---------------------------------------------------------------------------
+  describe("bulk add", async function () {
+    const D3 = 3_000_000n;
+
+    it("addDates adds multiple dates in one call", async function () {
+      const { contract } = await setup();
+      await contract.write.addDates([[D1, D2, D3]]);
+      const dates = await contract.read.getDates();
+      assert.equal(dates.length, 3);
+      assert.ok(dates.includes(D1));
+      assert.ok(dates.includes(D2));
+      assert.ok(dates.includes(D3));
+    });
+
+    it("addDates rejects duplicate within the batch", async function () {
+      const { contract } = await setup();
+      await assert.rejects(contract.write.addDates([[D1, D1]]));
+    });
+
+    it("addDates rejects duplicate already on chain", async function () {
+      const { contract } = await setup();
+      await contract.write.addDate([D1]);
+      await assert.rejects(contract.write.addDates([[D1, D2]]));
+    });
+
+    it("addGroups adds multiple groups in one call", async function () {
+      const { contract } = await setup();
+      await contract.write.addGroups([[1n, 2n, 3n], ["Alpha", "Beta", "Gamma"]]);
+      const ids = await contract.read.getGroupIds();
+      assert.equal(ids.length, 3);
+      assert.equal(await contract.read.getGroupName([1n]), "Alpha");
+      assert.equal(await contract.read.getGroupName([2n]), "Beta");
+      assert.equal(await contract.read.getGroupName([3n]), "Gamma");
+    });
+
+    it("addGroups rejects mismatched array lengths", async function () {
+      const { contract } = await setup();
+      await assert.rejects(contract.write.addGroups([[1n, 2n], ["Alpha"]]));
+    });
+
+    it("addGroups rejects duplicate group ID within batch", async function () {
+      const { contract } = await setup();
+      await assert.rejects(contract.write.addGroups([[1n, 1n], ["Alpha", "Dup"]]));
+    });
+
+    it("addGroups rejects group ID 0", async function () {
+      const { contract } = await setup();
+      await assert.rejects(contract.write.addGroups([[0n], ["Zero"]]));
+    });
+
+    it("addMembers adds multiple members across groups in one call", async function () {
+      const { contract, alice, bob, carol } = await setup();
+      await contract.write.addGroups([[1n, 2n], ["Alpha", "Beta"]]);
+      await contract.write.addMembers(
+        [[1n, 1n, 2n], [alice.account.address, bob.account.address, carol.account.address]]
+      );
+      const membersA = await contract.read.getGroupMembers([1n]);
+      const membersB = await contract.read.getGroupMembers([2n]);
+      assert.equal(membersA.length, 2);
+      assert.equal(membersB.length, 1);
+      assert.equal(await contract.read.memberGroup([alice.account.address]), 1n);
+      assert.equal(await contract.read.memberGroup([carol.account.address]), 2n);
+    });
+
+    it("addMembers rejects mismatched array lengths", async function () {
+      const { contract, alice } = await setup();
+      await contract.write.addGroup([1n, "Alpha"]);
+      await assert.rejects(
+        contract.write.addMembers([[1n, 1n], [alice.account.address]])
+      );
+    });
+
+    it("addMembers rejects address in two groups within batch", async function () {
+      const { contract, alice } = await setup();
+      await contract.write.addGroups([[1n, 2n], ["Alpha", "Beta"]]);
+      await assert.rejects(
+        contract.write.addMembers([[1n, 2n], [alice.account.address, alice.account.address]])
+      );
+    });
+
+    it("addMembers rejects owner as member", async function () {
+      const { contract, owner } = await setup();
+      await contract.write.addGroup([1n, "Alpha"]);
+      await assert.rejects(
+        contract.write.addMembers([[1n], [owner.account.address]])
+      );
+    });
+
+    it("full bulk setup flows into openVoting successfully", async function () {
+      const { contract, alice, bob } = await setup();
+      await contract.write.addDates([[D1, D2]]);
+      await contract.write.addGroups([[1n, 2n], ["Alpha", "Beta"]]);
+      await contract.write.addMembers(
+        [[1n, 2n], [alice.account.address, bob.account.address]]
+      );
+      await contract.write.openVoting();
+      assert.equal(await contract.read.phase(), 1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Ether rejection
   // ---------------------------------------------------------------------------
   describe("ether rejection", async function () {
