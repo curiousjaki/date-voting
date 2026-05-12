@@ -56,6 +56,14 @@ After setting the variable, you can run the deployment with the Sepolia network:
 npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
 ```
 
+Deploy the contract and set up the accounts for voting:
+
+```shell
+npx hardhat run scripts/deploy.ts --network sepolia
+```
+
 
 Deployed Addresses -- Do not delete
 0xE1b61AF077ff4dB2F58d4e50Db885aD926071357# date-voting
+
+npx serve .
